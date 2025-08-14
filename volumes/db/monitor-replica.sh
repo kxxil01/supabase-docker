@@ -42,28 +42,39 @@ while true; do
         echo "ERROR: Cannot connect to replica database"
     fi
     
-    # Check master status (connect via pooler using tenant ID)
+    # Check master status (try multiple connection methods)
     echo "--- MASTER STATUS ---"
     if [ -n "$POSTGRES_MASTER_HOST" ]; then
-        # Connect using pooler tenant ID as database name
-        TENANT_DB="${POOLER_TENANT_ID:-postgres}"
-        MASTER_STATUS=$(psql -h "$POSTGRES_MASTER_HOST" -p 5432 -U postgres -d "$TENANT_DB" -t -c "SELECT COUNT(*) FROM pg_stat_replication;" 2>/dev/null | tr -d ' ')
+        # Method 1: Try with replication user (most reliable for monitoring)
+        export PGPASSWORD="${POSTGRES_REPLICATION_PASSWORD:-replicator_pass}"
+        MASTER_STATUS=$(psql -h "$POSTGRES_MASTER_HOST" -p 5432 -U "${POSTGRES_REPLICATION_USER:-replicator}" -d postgres -t -c "SELECT COUNT(*) FROM pg_stat_replication;" 2>/dev/null | tr -d ' ')
         
         if [ -n "$MASTER_STATUS" ] && [ "$MASTER_STATUS" != "ERROR" ]; then
             echo "Master connection:      Connected ($POSTGRES_MASTER_HOST:5432)"
-            echo "Pooler tenant:          $TENANT_DB"
+            echo "Connection method:      Replication user"
             echo "Active replicas:        $MASTER_STATUS"
             
             # Get detailed replication info from master
-            REPLICATION_DETAILS=$(psql -h "$POSTGRES_MASTER_HOST" -p 5432 -U postgres -d "$TENANT_DB" -t -c "SELECT application_name, client_addr, state, sync_state FROM pg_stat_replication;" 2>/dev/null)
+            REPLICATION_DETAILS=$(psql -h "$POSTGRES_MASTER_HOST" -p 5432 -U "${POSTGRES_REPLICATION_USER:-replicator}" -d postgres -t -c "SELECT application_name, client_addr, state, sync_state FROM pg_stat_replication;" 2>/dev/null)
             if [ -n "$REPLICATION_DETAILS" ]; then
                 echo "Replication details:    $REPLICATION_DETAILS"
             fi
         else
-            echo "Master connection:      Failed ($POSTGRES_MASTER_HOST:5432)"
-            echo "Pooler tenant:          $TENANT_DB"
-            echo "Note:                   Ensure POOLER_TENANT_ID is configured correctly"
-            echo "Active replicas:        Unknown"
+            # Method 2: Fallback to pooler tenant (if configured)
+            export PGPASSWORD="$POSTGRES_PASSWORD"
+            TENANT_DB="${POOLER_TENANT_ID:-postgres}"
+            MASTER_STATUS=$(psql -h "$POSTGRES_MASTER_HOST" -p 5432 -U postgres -d "$TENANT_DB" -t -c "SELECT COUNT(*) FROM pg_stat_replication;" 2>/dev/null | tr -d ' ')
+            
+            if [ -n "$MASTER_STATUS" ] && [ "$MASTER_STATUS" != "ERROR" ]; then
+                echo "Master connection:      Connected ($POSTGRES_MASTER_HOST:5432)"
+                echo "Connection method:      Pooler tenant ($TENANT_DB)"
+                echo "Active replicas:        $MASTER_STATUS"
+            else
+                echo "Master connection:      Failed ($POSTGRES_MASTER_HOST:5432)"
+                echo "Tried methods:          Replication user, Pooler tenant"
+                echo "Note:                   Check pooler configuration and replication user"
+                echo "Active replicas:        Unknown"
+            fi
         fi
     else
         echo "Master connection:      No POSTGRES_MASTER_HOST configured"
