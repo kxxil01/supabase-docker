@@ -103,7 +103,7 @@ params = master_params
 IO.puts("Creating master tenant with external_id: #{params["external_id"]}")
 if !Supavisor.Tenants.get_tenant_by_external_id(params["external_id"]) do
   case Supavisor.Tenants.create_tenant(params) do
-    {:ok, tenant} -> 
+    {:ok, _tenant} -> 
       IO.puts("✅ Master tenant created successfully: #{params["external_id"]}")
     {:error, reason} -> 
       IO.puts("❌ Failed to create master tenant: #{inspect(reason)}")
@@ -117,7 +117,7 @@ if replica_params do
   IO.puts("Creating replica tenant with external_id: #{replica_params["external_id"]}")
   if !Supavisor.Tenants.get_tenant_by_external_id(replica_params["external_id"]) do
     case Supavisor.Tenants.create_tenant(replica_params) do
-      {:ok, tenant} -> 
+      {:ok, _tenant} -> 
         IO.puts("✅ Replica tenant created successfully: #{replica_params["external_id"]}")
       {:error, reason} -> 
         IO.puts("❌ Failed to create replica tenant: #{inspect(reason)}")
