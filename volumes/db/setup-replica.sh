@@ -38,6 +38,9 @@ if [ ! -f "/var/lib/postgresql/data/PG_VERSION" ]; then
     
     echo "Base backup completed successfully"
     
+    # Create standby.signal file (CRITICAL for replica mode)
+    touch /var/lib/postgresql/data/standby.signal
+    
     # Create recovery configuration
     cat > /var/lib/postgresql/data/postgresql.auto.conf << EOF
 # Replica configuration
