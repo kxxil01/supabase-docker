@@ -28,7 +28,6 @@ if [ ! -f "/var/lib/postgresql/data/PG_VERSION" ]; then
         -p "$POSTGRES_MASTER_PORT" \
         -U "$POSTGRES_REPLICATION_USER" \
         -D /var/lib/postgresql/data \
-        -W \
         -v \
         -P \
         -R \
