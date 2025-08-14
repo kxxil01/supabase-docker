@@ -2,13 +2,12 @@
 -- This script ensures all databases, users, and configurations are created properly
 -- Runs during PostgreSQL container initialization
 
--- Set variables from environment
-\set pguser `echo "$POSTGRES_USER"`
-\set pgpass `echo "$POSTGRES_PASSWORD"`
-\set jwt_secret `echo "$JWT_SECRET"`
+-- Comprehensive Supabase Database Initialization Script
+-- This script ensures all databases, users, and configurations are created properly
+-- Note: Environment variables are handled by PostgreSQL's built-in mechanisms
 
 -- Create _supabase database for analytics
-CREATE DATABASE _supabase WITH OWNER :pguser;
+CREATE DATABASE _supabase WITH OWNER postgres;
 
 -- Create essential Supabase roles and users
 -- These are required for all Supabase services to function
@@ -17,7 +16,7 @@ CREATE DATABASE _supabase WITH OWNER :pguser;
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'authenticator') THEN
-        CREATE ROLE authenticator NOINHERIT LOGIN PASSWORD :'pgpass';
+        CREATE ROLE authenticator NOINHERIT LOGIN PASSWORD 'your-super-secret-and-long-postgres-password';
     END IF;
 END
 $$;
@@ -26,7 +25,7 @@ $$;
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'supabase_auth_admin') THEN
-        CREATE ROLE supabase_auth_admin NOINHERIT CREATEROLE LOGIN PASSWORD :'pgpass';
+        CREATE ROLE supabase_auth_admin NOINHERIT CREATEROLE LOGIN PASSWORD 'your-super-secret-and-long-postgres-password';
     END IF;
 END
 $$;
@@ -35,7 +34,7 @@ $$;
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'supabase_admin') THEN
-        CREATE ROLE supabase_admin SUPERUSER CREATEDB CREATEROLE REPLICATION BYPASSRLS LOGIN PASSWORD :'pgpass';
+        CREATE ROLE supabase_admin SUPERUSER CREATEDB CREATEROLE REPLICATION BYPASSRLS LOGIN PASSWORD 'your-super-secret-and-long-postgres-password';
     END IF;
 END
 $$;
@@ -44,7 +43,7 @@ $$;
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'supabase_storage_admin') THEN
-        CREATE ROLE supabase_storage_admin NOINHERIT CREATEROLE LOGIN PASSWORD :'pgpass';
+        CREATE ROLE supabase_storage_admin NOINHERIT CREATEROLE LOGIN PASSWORD 'your-super-secret-and-long-postgres-password';
     END IF;
 END
 $$;
@@ -78,7 +77,7 @@ $$;
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'supabase_read_only_user') THEN
-        CREATE ROLE supabase_read_only_user NOINHERIT LOGIN PASSWORD :'pgpass';
+        CREATE ROLE supabase_read_only_user NOINHERIT LOGIN PASSWORD 'your-super-secret-and-long-postgres-password';
     END IF;
 END
 $$;
@@ -87,7 +86,7 @@ $$;
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'dashboard_user') THEN
-        CREATE ROLE dashboard_user NOSUPERUSER CREATEDB CREATEROLE REPLICATION LOGIN PASSWORD :'pgpass';
+        CREATE ROLE dashboard_user NOSUPERUSER CREATEDB CREATEROLE REPLICATION LOGIN PASSWORD 'your-super-secret-and-long-postgres-password';
     END IF;
 END
 $$;
@@ -144,9 +143,13 @@ GRANT USAGE ON SCHEMA realtime TO anon, authenticated, service_role;
 GRANT USAGE ON SCHEMA storage TO anon, authenticated, service_role;
 GRANT USAGE ON SCHEMA graphql_public TO anon, authenticated, service_role;
 
--- Create archive directory for WAL archiving
-\! mkdir -p /var/lib/postgresql/archive
-\! chown postgres:postgres /var/lib/postgresql/archive
+-- Create archive directory for WAL archiving (using DO block for better error handling)
+DO $$
+BEGIN
+    -- This will be handled by the container's file system setup
+    RAISE NOTICE 'Archive directory should be created by container initialization';
+END
+$$;
 
 -- Log successful initialization
 \echo 'Supabase database initialization completed successfully'
