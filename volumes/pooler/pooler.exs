@@ -32,7 +32,7 @@ defmodule MasterDetector do
 end
 
 # Detect current master dynamically
-master_host = System.get_env("POSTGRES_HOST", "db-master")
+master_host = System.get_env("POSTGRES_HOST", "db")
 replica_host = System.get_env("POSTGRES_REPLICA_HOST")
 port = String.to_integer(System.get_env("POSTGRES_PORT", "5432"))
 db = System.get_env("POSTGRES_DB", "postgres")
