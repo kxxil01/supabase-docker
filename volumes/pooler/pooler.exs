@@ -39,7 +39,13 @@ db = System.get_env("POSTGRES_DB", "postgres")
 user = "pgbouncer"
 password = System.get_env("POSTGRES_PASSWORD")
 
+IO.puts("🔍 Debug: master_host = #{inspect(master_host)}")
+IO.puts("🔍 Debug: replica_host = #{inspect(replica_host)}")
+IO.puts("🔍 Debug: port = #{inspect(port)}")
+IO.puts("🔍 Debug: db = #{inspect(db)}")
+
 current_master = MasterDetector.detect_master(master_host, replica_host, port, db, user, password)
+IO.puts("🔍 Debug: current_master = #{inspect(current_master)}")
 
 {:ok, version} =
   case Supavisor.Repo.query!("select version()") do
@@ -73,6 +79,8 @@ current_replica = case current_master do
   ^replica_host -> master_host
   _ -> replica_host
 end
+
+IO.puts("🔍 Debug: current_replica = #{inspect(current_replica)}")
 
 replica_params = if current_replica do
   %{
