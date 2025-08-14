@@ -100,11 +100,31 @@ end
 params = master_params
 
 # Create master tenant
+IO.puts("Creating master tenant with external_id: #{params["external_id"]}")
 if !Supavisor.Tenants.get_tenant_by_external_id(params["external_id"]) do
-  {:ok, _} = Supavisor.Tenants.create_tenant(params)
+  case Supavisor.Tenants.create_tenant(params) do
+    {:ok, tenant} -> 
+      IO.puts("✅ Master tenant created successfully: #{params["external_id"]}")
+    {:error, reason} -> 
+      IO.puts("❌ Failed to create master tenant: #{inspect(reason)}")
+  end
+else
+  IO.puts("ℹ️  Master tenant already exists: #{params["external_id"]}")
 end
 
 # Create replica tenant if replica is configured
-if replica_params && !Supavisor.Tenants.get_tenant_by_external_id(replica_params["external_id"]) do
-  {:ok, _} = Supavisor.Tenants.create_tenant(replica_params)
+if replica_params do
+  IO.puts("Creating replica tenant with external_id: #{replica_params["external_id"]}")
+  if !Supavisor.Tenants.get_tenant_by_external_id(replica_params["external_id"]) do
+    case Supavisor.Tenants.create_tenant(replica_params) do
+      {:ok, tenant} -> 
+        IO.puts("✅ Replica tenant created successfully: #{replica_params["external_id"]}")
+      {:error, reason} -> 
+        IO.puts("❌ Failed to create replica tenant: #{inspect(reason)}")
+    end
+  else
+    IO.puts("ℹ️  Replica tenant already exists: #{replica_params["external_id"]}")
+  end
+else
+  IO.puts("ℹ️  No replica configuration found, skipping replica tenant creation")
 end
