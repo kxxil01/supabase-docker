@@ -107,11 +107,42 @@ GRANT authenticator TO supabase_auth_admin;
 GRANT supabase_admin TO supabase_auth_admin;
 GRANT supabase_storage_admin TO supabase_auth_admin;
 
+-- Create auth schema and grant proper ownership
+CREATE SCHEMA IF NOT EXISTS auth;
+CREATE SCHEMA IF NOT EXISTS extensions;
+CREATE SCHEMA IF NOT EXISTS realtime;
+CREATE SCHEMA IF NOT EXISTS storage;
+CREATE SCHEMA IF NOT EXISTS graphql_public;
+CREATE SCHEMA IF NOT EXISTS supabase_functions;
+
+-- Grant schema ownership to appropriate service users
+ALTER SCHEMA auth OWNER TO supabase_auth_admin;
+ALTER SCHEMA extensions OWNER TO supabase_admin;
+ALTER SCHEMA realtime OWNER TO supabase_admin;
+ALTER SCHEMA storage OWNER TO supabase_storage_admin;
+ALTER SCHEMA graphql_public OWNER TO supabase_admin;
+ALTER SCHEMA supabase_functions OWNER TO supabase_admin;
+
 -- Grant database permissions
 GRANT ALL ON DATABASE postgres TO supabase_admin;
 GRANT ALL ON DATABASE _supabase TO supabase_admin;
 GRANT CONNECT ON DATABASE postgres TO anon, authenticated, service_role;
 GRANT CONNECT ON DATABASE _supabase TO supabase_admin;
+
+-- Grant schema permissions
+GRANT ALL ON SCHEMA auth TO supabase_auth_admin;
+GRANT ALL ON SCHEMA extensions TO supabase_admin;
+GRANT ALL ON SCHEMA realtime TO supabase_admin;
+GRANT ALL ON SCHEMA storage TO supabase_storage_admin;
+GRANT ALL ON SCHEMA graphql_public TO supabase_admin;
+GRANT ALL ON SCHEMA supabase_functions TO supabase_admin;
+
+-- Grant usage on schemas to service roles
+GRANT USAGE ON SCHEMA auth TO anon, authenticated, service_role;
+GRANT USAGE ON SCHEMA extensions TO anon, authenticated, service_role;
+GRANT USAGE ON SCHEMA realtime TO anon, authenticated, service_role;
+GRANT USAGE ON SCHEMA storage TO anon, authenticated, service_role;
+GRANT USAGE ON SCHEMA graphql_public TO anon, authenticated, service_role;
 
 -- Create archive directory for WAL archiving
 \! mkdir -p /var/lib/postgresql/archive
