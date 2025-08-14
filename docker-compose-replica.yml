@@ -35,7 +35,7 @@ services:
     command:
       [
         "bash", "-c",
-        "chmod +x /setup-replica.sh && /setup-replica.sh && exec postgres -c config_file=/etc/postgresql/postgresql.conf -c hba_file=/etc/postgresql/pg_hba.conf -c log_min_messages=fatal"
+        "chmod +x /setup-replica.sh && /setup-replica.sh && exec su-exec postgres postgres -c config_file=/etc/postgresql/postgresql.conf -c hba_file=/etc/postgresql/pg_hba.conf -c log_min_messages=fatal"
       ]
 
   # Optional: Monitoring for replica lag
