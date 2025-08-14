@@ -22,6 +22,15 @@ if [ ! -f "/var/lib/postgresql/data/PG_VERSION" ]; then
     # Remove any existing data
     rm -rf /var/lib/postgresql/data/*
     
+    # Drop existing replication slot if it exists
+    echo "Checking for existing replication slot..."
+    PGPASSWORD="$POSTGRES_REPLICATION_PASSWORD" PGSSLMODE=disable psql \
+        -h "$POSTGRES_MASTER_HOST" \
+        -p "$POSTGRES_MASTER_PORT" \
+        -U "$POSTGRES_REPLICATION_USER" \
+        -d postgres \
+        -c "SELECT pg_drop_replication_slot('replica_slot_1') WHERE EXISTS (SELECT 1 FROM pg_replication_slots WHERE slot_name = 'replica_slot_1');" || true
+    
     # Create base backup from master
     PGPASSWORD="$POSTGRES_REPLICATION_PASSWORD" PGSSLMODE=disable pg_basebackup \
         -h "$POSTGRES_MASTER_HOST" \
