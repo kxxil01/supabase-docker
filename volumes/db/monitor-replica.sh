@@ -42,51 +42,28 @@ while true; do
         echo "ERROR: Cannot connect to replica database"
     fi
     
-    # Check master status (try multiple connection methods)
+    # Check master status (direct connection to PostgreSQL master)
     echo "--- MASTER STATUS ---"
     if [ -n "$POSTGRES_MASTER_HOST" ]; then
-        # Method 1: Try with replication user (most reliable for monitoring)
+        # Connect directly to PostgreSQL master on port 5433 (replication port)
         export PGPASSWORD="${POSTGRES_REPLICATION_PASSWORD:-replicator_pass}"
-        MASTER_STATUS=$(psql -h "$POSTGRES_MASTER_HOST" -p 5432 -U "${POSTGRES_REPLICATION_USER:-replicator}" -d postgres -t -c "SELECT COUNT(*) FROM pg_stat_replication;" 2>/dev/null | tr -d ' ')
+        MASTER_STATUS=$(PGSSLMODE=disable psql -h "$POSTGRES_MASTER_HOST" -p 5433 -U "${POSTGRES_REPLICATION_USER:-replicator}" -d postgres -t -c "SELECT COUNT(*) FROM pg_stat_replication;" 2>/dev/null | tr -d ' ')
         
         if [ -n "$MASTER_STATUS" ] && [ "$MASTER_STATUS" != "ERROR" ]; then
-            echo "Master connection:      Connected ($POSTGRES_MASTER_HOST:5432)"
-            echo "Connection method:      Replication user"
+            echo "Master connection:      Connected ($POSTGRES_MASTER_HOST:5433)"
+            echo "Connection method:      Direct PostgreSQL master"
             echo "Active replicas:        $MASTER_STATUS"
             
             # Get detailed replication info from master
-            REPLICATION_DETAILS=$(psql -h "$POSTGRES_MASTER_HOST" -p 5432 -U "${POSTGRES_REPLICATION_USER:-replicator}" -d postgres -t -c "SELECT application_name, client_addr, state, sync_state FROM pg_stat_replication;" 2>/dev/null)
+            REPLICATION_DETAILS=$(PGSSLMODE=disable psql -h "$POSTGRES_MASTER_HOST" -p 5433 -U "${POSTGRES_REPLICATION_USER:-replicator}" -d postgres -t -c "SELECT application_name, client_addr, state, sync_state FROM pg_stat_replication;" 2>/dev/null)
             if [ -n "$REPLICATION_DETAILS" ]; then
                 echo "Replication details:    $REPLICATION_DETAILS"
             fi
         else
-            # Method 2: Try with pooler master tenant (fallback)
-            echo "Replication user connection failed, trying pooler master tenant..."
-            export PGPASSWORD="${POSTGRES_PASSWORD}"
-            
-            # Use master tenant for replication status queries (proven working format)
-            MASTER_TENANT="${POOLER_TENANT_ID:-your-tenant-id}"
-            echo "Using master tenant: $MASTER_TENANT"
-            
-            MASTER_STATUS=$(PGSSLMODE=disable psql -h "$POSTGRES_MASTER_HOST" -p 5432 -U "pgbouncer.$MASTER_TENANT" -d postgres -t -c "SELECT COUNT(*) FROM pg_stat_replication;" 2>/dev/null | tr -d ' ')
-            
-            if [ -n "$MASTER_STATUS" ] && [ "$MASTER_STATUS" != "ERROR" ]; then
-                echo "Master connection:      Connected ($POSTGRES_MASTER_HOST:5432)"
-                echo "Connection method:      Pooler tenant (master)"
-                echo "Tenant used:            $MASTER_TENANT"
-                echo "Active replicas:        $MASTER_STATUS"
-                
-                # Get detailed replication info from master via pooler
-                REPLICATION_DETAILS=$(PGSSLMODE=disable psql -h "$POSTGRES_MASTER_HOST" -p 5432 -U "pgbouncer.$MASTER_TENANT" -d postgres -t -c "SELECT application_name, client_addr, state, sync_state FROM pg_stat_replication;" 2>/dev/null)
-                if [ -n "$REPLICATION_DETAILS" ]; then
-                    echo "Replication details:    $REPLICATION_DETAILS"
-                fi
-            else
-                echo "Master connection:      Failed ($POSTGRES_MASTER_HOST:5432)"
-                echo "Tried methods:          Replication user, Pooler tenant"
-                echo "Note:                   Check pooler configuration and replication user"
-                echo "Active replicas:        Unknown"
-            fi
+            echo "Master connection:      Failed ($POSTGRES_MASTER_HOST:5433)"
+            echo "Connection method:      Direct PostgreSQL master"
+            echo "Note:                   Check master database and replication user"
+            echo "Active replicas:        Unknown"
         fi
     else
         echo "Master connection:      No POSTGRES_MASTER_HOST configured"
