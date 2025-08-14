@@ -1,6 +1,6 @@
-# Supabase Replica VM - PostgreSQL Replica Only
-# VM2: 192.168.1.11 (example IP)
-# Connects to Master VM at 192.168.1.10
+# Supabase PostgreSQL Replica - VM2 Configuration
+# This runs only the PostgreSQL replica database with monitoring
+# Designed for multi-VM deployment where VM1 runs the full Supabase stack
 
 name: supabase-replica
 
@@ -15,7 +15,7 @@ services:
     volumes:
       - ./volumes/db/replica-data:/var/lib/postgresql/data:Z
       - ./volumes/db/postgresql-replica.conf:/etc/postgresql/postgresql.conf:ro,Z
-      - ./volumes/db/pg_hba_replica.conf:/etc/postgresql/pg_hba.conf:ro,Z
+      - ./volumes/db/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro,Z
       - ./volumes/db/setup-replica.sh:/docker-entrypoint-initdb.d/setup-replica.sh:Z
       - db-config:/etc/postgresql-custom
     healthcheck:
