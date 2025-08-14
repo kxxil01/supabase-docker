@@ -65,19 +65,56 @@ The Supavisor pooler is configured with **automatic failover detection** to dist
 
 ## Deployment Steps
 
-### VM1 (Master) Setup
+**⚠️ IMPORTANT: Deploy in this exact order!**
 
-1. Copy all files to VM1
-2. Configure environment variables in `.env`
-3. Update IP addresses in configuration files
-4. Deploy: `docker compose -f docker-compose-master.yml up -d`
+### Phase 1: VM1 (Master) - Deploy First
 
-### VM2 (Replica) Setup
+1. **Copy files to VM1:**
+   ```bash
+   scp -r supabase-docker/ user@192.168.1.10:~/
+   ```
 
-1. Copy replica files to VM2
-2. Configure environment variables in `.env`
-3. Update `POSTGRES_MASTER_HOST` to VM1 IP address
-4. Deploy: `docker compose -f docker-compose-replica.yml up -d`
+2. **Configure environment:**
+   ```bash
+   cd ~/supabase-docker
+   cp .env.example .env
+   # Edit .env with your settings
+   ```
+
+3. **Deploy master stack:**
+   ```bash
+   docker compose -f docker-compose-master.yml up -d
+   ```
+
+4. **Verify master is running:**
+   ```bash
+   docker exec supabase-db-master psql -U postgres -c "SELECT version();"
+   ```
+
+### Phase 2: VM2 (Replica) - Deploy Second
+
+1. **Copy replica files to VM2:**
+   ```bash
+   scp docker-compose-replica.yml .env volumes/ user@192.168.1.11:~/
+   ```
+
+2. **Update .env on VM2:**
+   ```bash
+   POSTGRES_MASTER_HOST=192.168.1.10
+   ```
+
+3. **Deploy replica:**
+   ```bash
+   docker compose -f docker-compose-replica.yml up -d
+   ```
+
+4. **Verify replication:**
+   ```bash
+   docker exec supabase-replica psql -U postgres -c "SELECT pg_is_in_recovery();"
+   # Should return: t (true)
+   ```
+
+For detailed deployment procedures, see [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## Environment Variables
 
