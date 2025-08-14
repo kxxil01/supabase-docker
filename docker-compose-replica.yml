@@ -50,6 +50,7 @@ services:
         condition: service_healthy
     environment:
       PGPASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_MASTER_HOST: ${POSTGRES_MASTER_HOST:-192.168.1.10}
       POSTGRES_REPLICA_HOST: db-replica
     volumes:
