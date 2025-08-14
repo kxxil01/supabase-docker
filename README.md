@@ -74,161 +74,41 @@ The Supavisor pooler is configured with **automatic failover detection** to dist
    scp -r supabase-docker/ user@192.168.1.10:~/
    ```
 
-2. **Configure Environment**:
-   ```bash
-   cp .env.example .env
-   # Edit .env with your settings (POSTGRES_PASSWORD, JWT_SECRET, etc.)
-   ```
-
-3. **Deploy Master VM (VM1) - Flawless Deployment**:
-   ```bash
-   ./deploy-master.sh
-   ```
-   
-   Or manually:
-   ```bash
-   docker compose -f docker-compose-master.yml up -d
-   ```
-
-4. **Verify master is running:**
-   ```bash
-   docker exec supabase-db-master psql -U postgres -c "SELECT version();"
-   ```
-
-### Phase 2: VM2 (Replica) - Deploy Second
-
-1. **Copy replica files to VM2:**
-   ```bash
-   scp docker-compose-replica.yml .env volumes/ user@192.168.1.11:~/
-   ```
-
-2. **Update .env on VM2:**
-   ```bash
-   POSTGRES_MASTER_HOST=192.168.1.10
-   ```
-
-3. **Deploy replica:**
-   ```bash
-   docker compose -f docker-compose-replica.yml up -d
-   ```
-
-4. **Verify replication:**
-   ```bash
-   docker exec supabase-replica psql -U postgres -c "SELECT pg_is_in_recovery();"
-   # Should return: t (true)
-   ```
-
-For detailed deployment procedures, see [DEPLOYMENT.md](DEPLOYMENT.md).
-
-## Environment Variables
-
-Create `.env` file with these variables:
-
 ```bash
 # Database
-POSTGRES_PASSWORD=your_super_secret_password
-POSTGRES_DB=postgres
-POSTGRES_HOST=db-master
-POSTGRES_PORT=5432
+POSTGRES_PASSWORD=your-secure-password
+POSTGRES_MASTER_HOST=192.168.1.10  # VM1 IP
+POSTGRES_REPLICA_HOST=192.168.1.11  # VM2 IP
 
-# Replication
-POSTGRES_REPLICATION_USER=replicator
-POSTGRES_REPLICATION_PASSWORD=replicator_pass
-POSTGRES_MASTER_HOST=192.168.1.10  # VM1 IP address
-
-# Supabase
-ANON_KEY=your_anon_key
-SERVICE_ROLE_KEY=your_service_role_key
-JWT_SECRET=your_jwt_secret
-JWT_EXPIRY=3600
+# Supabase Keys (generate new ones)
+JWT_SECRET=your-jwt-secret
+ANON_KEY=your-anon-key
+SERVICE_ROLE_KEY=your-service-role-key
 ```
 
-## Key Benefits
+## 📊 Access Points
 
-🔥 **True High Availability** - If VM1 fails, VM2 can be promoted  
-🚀 **Read Scaling** - Direct read queries to replica VM  
-⚡ **Performance** - Separate resources for master/replica  
-🛡️ **Fault Tolerance** - Physical separation of databases
+- **Supabase Studio**: `http://vm1-ip:3000`
+- **API Gateway**: `http://vm1-ip:8000`
+- **Database**: `vm1-ip:5432` (via pooler with auto-failover)
 
-## Monitoring
+## 🔄 Automatic Failover
 
-Use the monitoring script to check replication status:
-
+Supavisor pooler automatically detects master/replica status and routes connections. If VM1 fails, promote VM2:
 ```bash
-# On VM2 (Replica)
-docker exec supabase-replica-monitor /scripts/monitor-replica.sh
+docker exec supabase-db-replica pg_promote
 ```
 
-## Automatic Failover Process
+## 📋 Production Checklist
 
-**🚀 Zero-Downtime Failover**: The pooler automatically handles failover without manual intervention!
+- [ ] Change default passwords
+- [ ] Generate new JWT secrets  
+- [ ] Configure firewall (ports 5432, 6543, 8000, 8443)
+- [ ] Set up SSL certificates
+- [ ] Configure backups
+- [ ] Monitor replication: `docker exec supabase-db psql -U postgres -c "SELECT * FROM pg_stat_replication;"`
 
-### When VM1 (Master) Fails:
-
-1. **Promote Replica**: Create trigger file on VM2
-   ```bash
-   docker exec supabase-replica touch /var/lib/postgresql/data/promote.trigger
-   ```
-
-2. **Automatic Detection**: Pooler detects VM2 as the new master within seconds
-   - Queries `pg_is_in_recovery()` on both databases
-   - Routes writes to VM2 (new master) automatically
-   - No application changes needed!
-
-3. **Seamless Operation**: Applications continue working with same connection strings
-   - Write operations → VM2 (new master)
-   - Read operations → VM2 (or VM1 if recovered)
-
-### Manual Failover (Alternative):
-
-If you prefer manual control:
-1. Promote replica as above
-2. Update application connection strings to point to VM2
-3. Restart Supabase services with new database host
-
-**Recommendation**: Use automatic failover for production - it's faster and more reliable!
-
-## Testing the Setup
-
-### Quick Test Scripts
-
-We've included comprehensive test scripts to verify your setup:
-
-```bash
-# Test pooler master detection and routing
-./test-pooler.sh
-
-# Test complete failover process (interactive)
-./test-failover.sh
-```
-
-### Manual Testing
-
-1. **Verify database roles:**
-   ```bash
-   # VM1 should be master
-   psql -h 192.168.1.10 -U postgres -d postgres -c "SELECT CASE WHEN pg_is_in_recovery() THEN 'REPLICA' ELSE 'MASTER' END as role;"
-   
-   # VM2 should be replica  
-   psql -h 192.168.1.11 -U postgres -d postgres -c "SELECT CASE WHEN pg_is_in_recovery() THEN 'REPLICA' ELSE 'MASTER' END as role;"
-   ```
-
-2. **Test automatic failover:**
-   ```bash
-   # Promote replica on VM2
-   docker exec supabase-replica touch /var/lib/postgresql/data/promote.trigger
-   
-   # Wait 10-30 seconds, then test writes through pooler
-   psql -h 192.168.1.10 -p 5432 -U postgres -d postgres -c "CREATE TABLE test (id SERIAL); INSERT INTO test DEFAULT VALUES;"
-   ```
-
-3. **Verify pooler routing:**
-   - Writes should automatically go to the current master (VM1 or VM2)
-   - No application changes needed after failover
-   - Check logs: `docker logs supabase-pooler`
-
-For detailed testing procedures, see [TESTING.md](TESTING.md).
-
-## Original Supabase Documentation
+---
+**⚡ Enterprise-grade Supabase with automatic failover**
 
 For basic Supabase Docker setup, follow the steps [here](https://supabase.com/docs/guides/hosting/docker).
