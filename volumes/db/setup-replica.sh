@@ -23,7 +23,7 @@ if [ ! -f "/var/lib/postgresql/data/PG_VERSION" ]; then
     rm -rf /var/lib/postgresql/data/*
     
     # Create base backup from master
-    PGPASSWORD="$POSTGRES_REPLICATION_PASSWORD" pg_basebackup \
+    PGPASSWORD="$POSTGRES_REPLICATION_PASSWORD" PGSSLMODE=disable pg_basebackup \
         -h "$POSTGRES_MASTER_HOST" \
         -p "$POSTGRES_MASTER_PORT" \
         -U "$POSTGRES_REPLICATION_USER" \
