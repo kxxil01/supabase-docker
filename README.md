@@ -147,6 +147,47 @@ If you prefer manual control:
 
 **Recommendation**: Use automatic failover for production - it's faster and more reliable!
 
+## Testing the Setup
+
+### Quick Test Scripts
+
+We've included comprehensive test scripts to verify your setup:
+
+```bash
+# Test pooler master detection and routing
+./test-pooler.sh
+
+# Test complete failover process (interactive)
+./test-failover.sh
+```
+
+### Manual Testing
+
+1. **Verify database roles:**
+   ```bash
+   # VM1 should be master
+   psql -h 192.168.1.10 -U postgres -d postgres -c "SELECT CASE WHEN pg_is_in_recovery() THEN 'REPLICA' ELSE 'MASTER' END as role;"
+   
+   # VM2 should be replica  
+   psql -h 192.168.1.11 -U postgres -d postgres -c "SELECT CASE WHEN pg_is_in_recovery() THEN 'REPLICA' ELSE 'MASTER' END as role;"
+   ```
+
+2. **Test automatic failover:**
+   ```bash
+   # Promote replica on VM2
+   docker exec supabase-replica touch /var/lib/postgresql/data/promote.trigger
+   
+   # Wait 10-30 seconds, then test writes through pooler
+   psql -h 192.168.1.10 -p 5432 -U postgres -d postgres -c "CREATE TABLE test (id SERIAL); INSERT INTO test DEFAULT VALUES;"
+   ```
+
+3. **Verify pooler routing:**
+   - Writes should automatically go to the current master (VM1 or VM2)
+   - No application changes needed after failover
+   - Check logs: `docker logs supabase-pooler`
+
+For detailed testing procedures, see [TESTING.md](TESTING.md).
+
 ## Original Supabase Documentation
 
 For basic Supabase Docker setup, follow the steps [here](https://supabase.com/docs/guides/hosting/docker).
