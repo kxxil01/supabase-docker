@@ -17,6 +17,7 @@ master_params = %{
   "db_port" => System.get_env("POSTGRES_PORT"),
   "db_database" => "postgres",
   "require_user" => false,
+  "auth_query" => "SELECT rolname, rolpassword FROM pg_authid WHERE rolname = $1",
   "default_max_clients" => System.get_env("POOLER_MAX_CLIENT_CONN"),
   "default_pool_size" => System.get_env("POOLER_DEFAULT_POOL_SIZE"),
   "default_parameter_status" => %{"server_version" => version},
