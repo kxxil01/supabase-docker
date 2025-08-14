@@ -67,13 +67,27 @@ The Supavisor pooler is configured with **automatic failover detection** to dist
 
 **⚠️ IMPORTANT: Deploy in this exact order!**
 
-### Phase 1: VM1 (Master) - Deploy First
+### VM1 (Master)
+```bash
+git clone https://github.com/kxxil01/supabase-docker.git
+cd supabase-docker
+cp .env.example .env
+# Edit .env with your configuration
+docker compose -f docker-compose-master.yml up -d
+```
 
-1. **Copy files to VM1:**
-   ```bash
-   scp -r supabase-docker/ user@192.168.1.10:~/
-   ```
+### VM2 (Replica)
+```bash
+git clone https://github.com/kxxil01/supabase-docker.git
+cd supabase-docker
+cp .env.replica.example .env
+# Edit .env with master VM IP (update IP addresses)
+docker compose -f docker-compose-replica.yml up -d
+```
 
+## 🔧 Key Configuration
+
+### VM1 Master (.env)
 ```bash
 # Database
 POSTGRES_PASSWORD=your-secure-password
@@ -84,6 +98,16 @@ POSTGRES_REPLICA_HOST=192.168.1.11  # VM2 IP
 JWT_SECRET=your-jwt-secret
 ANON_KEY=your-anon-key
 SERVICE_ROLE_KEY=your-service-role-key
+```
+
+### VM2 Replica (.env)
+```bash
+# Database (MUST MATCH MASTER)
+POSTGRES_PASSWORD=your-secure-password
+POSTGRES_MASTER_HOST=192.168.1.10  # VM1 IP
+POSTGRES_REPLICA_HOST=192.168.1.11  # VM2 IP
+POSTGRES_REPLICATION_USER=replicator
+POSTGRES_REPLICATION_PASSWORD=replicator_pass
 ```
 
 ## 📊 Access Points
