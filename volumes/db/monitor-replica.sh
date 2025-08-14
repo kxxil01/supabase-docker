@@ -42,24 +42,27 @@ while true; do
         echo "ERROR: Cannot connect to replica database"
     fi
     
-    # Check master status (connect to master VM via transaction pooler port 6543)
+    # Check master status (connect via pooler using tenant ID)
     echo "--- MASTER STATUS ---"
     if [ -n "$POSTGRES_MASTER_HOST" ]; then
-        # Try transaction pooler port 6543 first (direct PostgreSQL access)
-        MASTER_STATUS=$(psql -h "$POSTGRES_MASTER_HOST" -p 6543 -U postgres -d postgres -t -c "SELECT COUNT(*) FROM pg_stat_replication;" 2>/dev/null | tr -d ' ')
+        # Connect using pooler tenant ID as database name
+        TENANT_DB="${POOLER_TENANT_ID:-postgres}"
+        MASTER_STATUS=$(psql -h "$POSTGRES_MASTER_HOST" -p 5432 -U postgres -d "$TENANT_DB" -t -c "SELECT COUNT(*) FROM pg_stat_replication;" 2>/dev/null | tr -d ' ')
         
         if [ -n "$MASTER_STATUS" ] && [ "$MASTER_STATUS" != "ERROR" ]; then
-            echo "Master connection:      Connected ($POSTGRES_MASTER_HOST:6543)"
+            echo "Master connection:      Connected ($POSTGRES_MASTER_HOST:5432)"
+            echo "Pooler tenant:          $TENANT_DB"
             echo "Active replicas:        $MASTER_STATUS"
             
             # Get detailed replication info from master
-            REPLICATION_DETAILS=$(psql -h "$POSTGRES_MASTER_HOST" -p 6543 -U postgres -d postgres -t -c "SELECT application_name, client_addr, state, sync_state FROM pg_stat_replication;" 2>/dev/null)
+            REPLICATION_DETAILS=$(psql -h "$POSTGRES_MASTER_HOST" -p 5432 -U postgres -d "$TENANT_DB" -t -c "SELECT application_name, client_addr, state, sync_state FROM pg_stat_replication;" 2>/dev/null)
             if [ -n "$REPLICATION_DETAILS" ]; then
                 echo "Replication details:    $REPLICATION_DETAILS"
             fi
         else
-            echo "Master connection:      Failed ($POSTGRES_MASTER_HOST:6543)"
-            echo "Note:                   Port 5432 requires pooler tenant configuration"
+            echo "Master connection:      Failed ($POSTGRES_MASTER_HOST:5432)"
+            echo "Pooler tenant:          $TENANT_DB"
+            echo "Note:                   Ensure POOLER_TENANT_ID is configured correctly"
             echo "Active replicas:        Unknown"
         fi
     else

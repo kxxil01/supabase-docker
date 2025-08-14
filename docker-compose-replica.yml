@@ -53,6 +53,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_MASTER_HOST: ${POSTGRES_MASTER_HOST:-192.168.1.10}
       POSTGRES_REPLICA_HOST: db-replica
+      POOLER_TENANT_ID: ${POOLER_TENANT_ID:-postgres}
     volumes:
       - ./volumes/db/monitor-replica.sh:/usr/local/bin/monitor-replica.sh:ro,Z
     command: ["/bin/sh", "/usr/local/bin/monitor-replica.sh"]
