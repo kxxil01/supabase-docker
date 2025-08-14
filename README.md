@@ -8,6 +8,38 @@ Multi-VM PostgreSQL replication setup for Supabase with 1 Master + 1 Replica con
 - **VM2 (Replica)**: PostgreSQL Replica only
 - **Network**: Cross-VM replication via streaming replication
 
+## How It Works
+
+**Master VM (VM1)**:
+- Runs full Supabase stack (API, Auth, Storage, etc.)
+- PostgreSQL master database with WAL enabled
+- Accepts read/write operations
+- Streams WAL to replica
+- Supavisor pooler configured for master connections
+
+**Replica VM (VM2)**:
+- Runs PostgreSQL replica only
+- Continuously receives WAL from master
+- Read-only operations
+- Automatic failover capability
+
+## Pooler Configuration for Read/Write Splitting
+
+The Supavisor pooler is configured to distinguish between master and replica:
+
+**Connection Endpoints**:
+- **Master (Read/Write)**: `postgresql://user:pass@master-ip:5432/db`
+- **Replica (Read-Only)**: `postgresql://user:pass@master-ip:5432/db_readonly`
+
+**How It Works**:
+1. Pooler creates two tenant configurations:
+   - Primary tenant: Routes to master database
+   - `_readonly` tenant: Routes to replica database (if `POSTGRES_REPLICA_HOST` is set)
+2. Applications connect to different database names:
+   - `postgres` → Master (read/write)
+   - `postgres_readonly` → Replica (read-only)
+3. Pooler automatically routes based on connection string
+
 ## Files Structure
 
 ### Docker Compose Files
