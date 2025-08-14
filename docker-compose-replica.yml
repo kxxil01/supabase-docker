@@ -16,7 +16,7 @@ services:
       - ./volumes/db/replica-data:/var/lib/postgresql/data:Z
       - ./volumes/db/postgresql-replica.conf:/etc/postgresql/postgresql.conf:ro,Z
       - ./volumes/db/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro,Z
-      - ./volumes/db/setup-replica.sh:/docker-entrypoint-initdb.d/setup-replica.sh:Z
+      - ./volumes/db/setup-replica.sh:/setup-replica.sh:Z
       - db-config:/etc/postgresql-custom
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres", "-h", "localhost"]
@@ -34,10 +34,8 @@ services:
       POSTGRES_REPLICATION_PASSWORD: ${POSTGRES_REPLICATION_PASSWORD:-replicator_pass}
     command:
       [
-        "postgres",
-        "-c", "config_file=/etc/postgresql/postgresql.conf",
-        "-c", "hba_file=/etc/postgresql/pg_hba.conf",
-        "-c", "log_min_messages=fatal"
+        "bash", "-c",
+        "chmod +x /setup-replica.sh && /setup-replica.sh && exec postgres -c config_file=/etc/postgresql/postgresql.conf -c hba_file=/etc/postgresql/pg_hba.conf -c log_min_messages=fatal"
       ]
 
   # Optional: Monitoring for replica lag
