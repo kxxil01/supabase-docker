@@ -8,7 +8,8 @@ echo "Starting PostgreSQL replica monitoring..."
 while true; do
     echo "=== Replica Status Check $(date) ==="
     
-    # Check replica lag (connect to local replica)
+    # Check replica lag (connect to local replica using environment password)
+    export PGPASSWORD="$POSTGRES_PASSWORD"
     LAG=$(psql -h localhost -U postgres -d postgres -t -c "SELECT CASE WHEN pg_is_in_recovery() THEN COALESCE(EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp())), 0) ELSE 0 END AS lag_seconds;" 2>/dev/null | tr -d ' ')
     
     if [ -n "$LAG" ] && [ "$LAG" != "ERROR" ]; then
@@ -35,6 +36,8 @@ while true; do
     
     if [ -n "$REPLICATION_INFO" ] && [ "$REPLICATION_INFO" != "ERROR" ]; then
         echo "Replication source:     Connected"
+        # Show master connection details
+        echo "Master connection:      $REPLICATION_INFO"
     else
         echo "Replication source:     Disconnected or not available"
     fi
