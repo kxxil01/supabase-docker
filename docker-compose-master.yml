@@ -398,6 +398,8 @@ services:
         "-c",
         "config_file=/etc/postgresql/postgresql.conf",
         "-c",
+        "hba_file=/etc/postgresql/pg_hba.conf",
+        "-c",
         "log_min_messages=fatal" # prevents Realtime polling queries from appearing in logs
       ]
 
