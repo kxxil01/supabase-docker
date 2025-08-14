@@ -74,14 +74,18 @@ The Supavisor pooler is configured with **automatic failover detection** to dist
    scp -r supabase-docker/ user@192.168.1.10:~/
    ```
 
-2. **Configure environment:**
+2. **Configure Environment**:
    ```bash
-   cd ~/supabase-docker
    cp .env.example .env
-   # Edit .env with your settings
+   # Edit .env with your settings (POSTGRES_PASSWORD, JWT_SECRET, etc.)
    ```
 
-3. **Deploy master stack:**
+3. **Deploy Master VM (VM1) - Flawless Deployment**:
+   ```bash
+   ./deploy-master.sh
+   ```
+   
+   Or manually:
    ```bash
    docker compose -f docker-compose-master.yml up -d
    ```
