@@ -42,22 +42,24 @@ while true; do
         echo "ERROR: Cannot connect to replica database"
     fi
     
-    # Check master status (connect to master VM)
+    # Check master status (connect to master VM via transaction pooler port 6543)
     echo "--- MASTER STATUS ---"
     if [ -n "$POSTGRES_MASTER_HOST" ]; then
-        MASTER_STATUS=$(psql -h "$POSTGRES_MASTER_HOST" -U postgres -d postgres -t -c "SELECT COUNT(*) FROM pg_stat_replication;" 2>/dev/null | tr -d ' ')
+        # Try transaction pooler port 6543 first (direct PostgreSQL access)
+        MASTER_STATUS=$(psql -h "$POSTGRES_MASTER_HOST" -p 6543 -U postgres -d postgres -t -c "SELECT COUNT(*) FROM pg_stat_replication;" 2>/dev/null | tr -d ' ')
         
         if [ -n "$MASTER_STATUS" ] && [ "$MASTER_STATUS" != "ERROR" ]; then
-            echo "Master connection:      Connected ($POSTGRES_MASTER_HOST)"
+            echo "Master connection:      Connected ($POSTGRES_MASTER_HOST:6543)"
             echo "Active replicas:        $MASTER_STATUS"
             
             # Get detailed replication info from master
-            REPLICATION_DETAILS=$(psql -h "$POSTGRES_MASTER_HOST" -U postgres -d postgres -t -c "SELECT application_name, client_addr, state, sync_state FROM pg_stat_replication;" 2>/dev/null)
+            REPLICATION_DETAILS=$(psql -h "$POSTGRES_MASTER_HOST" -p 6543 -U postgres -d postgres -t -c "SELECT application_name, client_addr, state, sync_state FROM pg_stat_replication;" 2>/dev/null)
             if [ -n "$REPLICATION_DETAILS" ]; then
                 echo "Replication details:    $REPLICATION_DETAILS"
             fi
         else
-            echo "Master connection:      Failed ($POSTGRES_MASTER_HOST)"
+            echo "Master connection:      Failed ($POSTGRES_MASTER_HOST:6543)"
+            echo "Note:                   Port 5432 requires pooler tenant configuration"
             echo "Active replicas:        Unknown"
         fi
     else
