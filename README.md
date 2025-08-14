@@ -25,34 +25,40 @@ Multi-VM PostgreSQL replication setup for Supabase with 1 Master + 1 Replica con
 
 ## Pooler Configuration for Read/Write Splitting
 
-The Supavisor pooler is configured to distinguish between master and replica:
+The Supavisor pooler is configured with **automatic failover detection** to distinguish between master and replica:
 
 **Connection Endpoints**:
 - **Master (Read/Write)**: `postgresql://user:pass@master-ip:5432/db`
 - **Replica (Read-Only)**: `postgresql://user:pass@master-ip:5432/db_readonly`
 
 **How It Works**:
-1. Pooler creates two tenant configurations:
-   - Primary tenant: Routes to master database
-   - `_readonly` tenant: Routes to replica database (if `POSTGRES_REPLICA_HOST` is set)
-2. Applications connect to different database names:
-   - `postgres` → Master (read/write)
-   - `postgres_readonly` → Replica (read-only)
-3. Pooler automatically routes based on connection string
+
+1. **Dynamic Master Detection**: Pooler queries both databases using `pg_is_in_recovery()` to detect which is actually the master
+2. **Automatic Routing**: 
+   - Primary tenant: Routes to whichever database is NOT in recovery (the actual master)
+   - `_readonly` tenant: Routes to the other database (the actual replica)
+3. **Failover Handling**: When VM2 becomes master after failover:
+   - Pooler automatically detects VM2 as the new master
+   - Write traffic gets routed to VM2 automatically
+   - Read traffic gets routed to VM1 (if still available) or VM2
+4. **Zero Downtime**: Applications continue working without connection string changes
 
 ## Files Structure
 
 ### Docker Compose Files
+
 - `docker-compose-master.yml` - Full Supabase stack with PostgreSQL Master (VM1)
 - `docker-compose-replica.yml` - PostgreSQL Replica only (VM2)
 
 ### PostgreSQL Configuration
+
 - `volumes/db/postgresql-master.conf` - Master database configuration
 - `volumes/db/postgresql-replica.conf` - Replica database configuration
 - `volumes/db/pg_hba.conf` - Master authentication rules
 - `volumes/db/pg_hba_replica.conf` - Replica authentication rules
 
 ### Setup Scripts
+
 - `volumes/db/replication-setup.sql` - Creates replication user and slots
 - `volumes/db/setup-replica.sh` - Automated replica initialization
 - `volumes/db/monitor-replica.sh` - Replication lag monitoring
@@ -60,12 +66,14 @@ The Supavisor pooler is configured to distinguish between master and replica:
 ## Deployment Steps
 
 ### VM1 (Master) Setup
+
 1. Copy all files to VM1
 2. Configure environment variables in `.env`
 3. Update IP addresses in configuration files
 4. Deploy: `docker compose -f docker-compose-master.yml up -d`
 
 ### VM2 (Replica) Setup
+
 1. Copy replica files to VM2
 2. Configure environment variables in `.env`
 3. Update `POSTGRES_MASTER_HOST` to VM1 IP address
@@ -103,18 +111,41 @@ JWT_EXPIRY=3600
 
 ## Monitoring
 
-The replica includes built-in monitoring that tracks:
-- Replication lag in seconds
-- Connection status to master
-- Replication slot status
+Use the monitoring script to check replication status:
 
-## Failover Process
+```bash
+# On VM2 (Replica)
+docker exec supabase-replica-monitor /scripts/monitor-replica.sh
+```
 
-To promote replica to master:
-1. Stop master VM
-2. Create promote trigger: `touch /tmp/promote_replica` in replica container
-3. Update applications to point to replica VM
-4. Replica becomes new master
+## Automatic Failover Process
+
+**🚀 Zero-Downtime Failover**: The pooler automatically handles failover without manual intervention!
+
+### When VM1 (Master) Fails:
+
+1. **Promote Replica**: Create trigger file on VM2
+   ```bash
+   docker exec supabase-replica touch /var/lib/postgresql/data/promote.trigger
+   ```
+
+2. **Automatic Detection**: Pooler detects VM2 as the new master within seconds
+   - Queries `pg_is_in_recovery()` on both databases
+   - Routes writes to VM2 (new master) automatically
+   - No application changes needed!
+
+3. **Seamless Operation**: Applications continue working with same connection strings
+   - Write operations → VM2 (new master)
+   - Read operations → VM2 (or VM1 if recovered)
+
+### Manual Failover (Alternative):
+
+If you prefer manual control:
+1. Promote replica as above
+2. Update application connection strings to point to VM2
+3. Restart Supabase services with new database host
+
+**Recommendation**: Use automatic failover for production - it's faster and more reliable!
 
 ## Original Supabase Documentation
 
