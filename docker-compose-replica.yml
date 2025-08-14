@@ -1,0 +1,60 @@
+# Supabase Replica VM - PostgreSQL Replica Only
+# VM2: 192.168.1.11 (example IP)
+# Connects to Master VM at 192.168.1.10
+
+name: supabase-replica
+
+services:
+  # PostgreSQL Read Replica
+  db-replica:
+    container_name: supabase-db-replica
+    image: supabase/postgres:15.8.1.060
+    restart: unless-stopped
+    ports:
+      - "5432:5432"  # Expose for application connections
+    volumes:
+      - ./volumes/db/replica-data:/var/lib/postgresql/data:Z
+      - ./volumes/db/postgresql-replica.conf:/etc/postgresql/postgresql.conf:ro,Z
+      - ./volumes/db/pg_hba_replica.conf:/etc/postgresql/pg_hba.conf:ro,Z
+      - ./volumes/db/setup-replica.sh:/docker-entrypoint-initdb.d/setup-replica.sh:Z
+      - db-config:/etc/postgresql-custom
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    environment:
+      PGUSER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      # Master VM connection details
+      POSTGRES_MASTER_HOST: ${POSTGRES_MASTER_HOST:-192.168.1.10}
+      POSTGRES_MASTER_PORT: 5432
+      POSTGRES_REPLICATION_USER: ${POSTGRES_REPLICATION_USER:-replicator}
+      POSTGRES_REPLICATION_PASSWORD: ${POSTGRES_REPLICATION_PASSWORD:-replicator_pass}
+    command:
+      [
+        "postgres",
+        "-c", "config_file=/etc/postgresql/postgresql.conf",
+        "-c", "hba_file=/etc/postgresql/pg_hba.conf",
+        "-c", "log_min_messages=fatal"
+      ]
+
+  # Optional: Monitoring for replica lag
+  replica-monitor:
+    container_name: supabase-replica-monitor
+    image: postgres:15-alpine
+    restart: unless-stopped
+    depends_on:
+      db-replica:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_MASTER_HOST: ${POSTGRES_MASTER_HOST:-192.168.1.10}
+      POSTGRES_REPLICA_HOST: db-replica
+    volumes:
+      - ./volumes/db/monitor-replica.sh:/usr/local/bin/monitor-replica.sh:ro,Z
+    command: ["/bin/sh", "/usr/local/bin/monitor-replica.sh"]
+
+volumes:
+  db-config:
