@@ -13,11 +13,12 @@ services:
     ports:
       - "5432:5432"  # Expose for application connections
     volumes:
-      - ./volumes/db/replica-data:/var/lib/postgresql/data:Z
       - ./volumes/db/postgresql-replica.conf:/etc/postgresql/postgresql.conf:ro,Z
       - ./volumes/db/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro,Z
       - ./volumes/db/setup-replica.sh:/setup-replica.sh:Z
       - db-config:/etc/postgresql-custom
+      # PGDATA directory is persisted between restarts
+      - /data:/var/lib/postgresql/data:Z
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres", "-h", "localhost"]
       interval: 10s
